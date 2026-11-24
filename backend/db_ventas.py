@@ -13,28 +13,37 @@ def registrar_historial_edicion(conexion, cursor_principal, lu_usuario, tipo_edi
     apellidos = u[1] if u else "Desconocido"
     ahora = datetime.now()
     
+    # Aseguramos que nombre_tabla sea la tabla real y tipo_edicion contenga el tipo/detalle (hasta 50 chars)
+    edicion_str = f"{tipo_edicion} - {detalle}"[:50] if detalle else str(tipo_edicion)[:50]
     cursor_principal.execute('''
         INSERT INTO historial_edicion 
         (nombre_tabla, tipo_edicion, apellido_usuario, nombre_usuario, lu_usuario, fecha, hora)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
-    ''', (detalle, tipo_edicion, apellidos, nombres, lu_usuario, ahora.strftime('%Y-%m-%d'), ahora.strftime('%H:%M:%S')))
+    ''', ("historial_caja_ventas", edicion_str, apellidos, nombres, lu_usuario, ahora.strftime('%Y-%m-%d'), ahora.strftime('%H:%M:%S')))
 
 def obtener_estado_caja(conexion=None):
     """Devuelve los valores actuales de la caja."""
     cerrar_aqui = False
-    if not conexion:
-        conexion = obtener_conexion()
-        cerrar_aqui = True
-        
+    cursor = None
     try:
+        if not conexion:
+            conexion = obtener_conexion()
+            cerrar_aqui = True
+            
         cursor = conexion.cursor(dictionary=True)
         cursor.execute("SELECT caja_efectivo, caja_transferencia, caja_total FROM historial_caja_ventas ORDER BY id DESC LIMIT 1")
         ultima = cursor.fetchone()
         if ultima:
             return float(ultima['caja_efectivo']), float(ultima['caja_transferencia']), float(ultima['caja_total'])
         return 0.0, 0.0, 0.0
+    except Exception as e:
+        print(f"Error al obtener estado de caja: {e}")
+        return 0.0, 0.0, 0.0
     finally:
-        if cerrar_aqui and conexion.is_connected(): conexion.close()
+        if cursor:
+            cursor.close()
+        if cerrar_aqui and 'conexion' in locals() and conexion and conexion.is_connected():
+            conexion.close()
 
 def registrar_movimiento_caja(lu_usuario, e_efe, e_trans, s_efe, s_trans, tipo_edicion, detalle):
     """Registra entradas o salidas manuales de caja (Extraer/Agregar)."""
@@ -68,7 +77,7 @@ def obtener_articulos_venta():
         conexion = obtener_conexion()
         if conexion.is_connected():
             cursor = conexion.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM objetos_ventas WHERE stock > 0 ORDER BY veces_vendido DESC")
+            cursor.execute("SELECT * FROM objetos_ventas WHERE stock > 0 ORDER BY articulo ASC")
             return cursor.fetchall()
     except Error as e: print(e)
     finally:

@@ -132,10 +132,21 @@ def actualizar_cargo_beneficiario(lu, nuevo_cargo):
                 if not existe:
                     # Si no existe, lo agregamos con su LU como contraseña por defecto
                     cursor.execute("INSERT INTO usuarios_comision (lu_usuario, contrasena) VALUES (%s, %s)", (lu, lu))
+                else:
+                    # Si ya existía pero estaba bloqueado, lo reactivamos con su LU
+                    cursor.execute("SELECT contrasena FROM usuarios_comision WHERE lu_usuario = %s", (lu,))
+                    row_pw = cursor.fetchone()
+                    if row_pw and str(row_pw[0]).startswith("BLOQUEADO_"):
+                        cursor.execute("UPDATE usuarios_comision SET contrasena = %s WHERE lu_usuario = %s", (lu, lu))
             else:
-                # Si el nuevo cargo es Estudiante u otro rol sin acceso, lo removemos de usuarios_comision
+                # Si el nuevo cargo es Estudiante u otro rol sin acceso, intentamos eliminarlo
+                # Si tiene historial de inicio de sesión (FK RESTRICT), lo bloqueamos para evitar error 1451
                 if existe:
-                    cursor.execute("DELETE FROM usuarios_comision WHERE lu_usuario = %s", (lu,))
+                    try:
+                        cursor.execute("DELETE FROM usuarios_comision WHERE lu_usuario = %s", (lu,))
+                    except Error:
+                        letras_random = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+                        cursor.execute("UPDATE usuarios_comision SET contrasena = %s WHERE lu_usuario = %s", (f"BLOQUEADO_{letras_random}", lu))
             
             conexion.commit()
             return True, "Cargo actualizado correctamente."

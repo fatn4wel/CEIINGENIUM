@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (QWidget, QLabel, QLineEdit, QPushButton,
 from PyQt6.QtCore import Qt
 
 import backend.db_objetos as backend
+from backend.seguridad import validar_contrasena
 
 class DialogoObjeto(QDialog):
     def __init__(self, parent=None, datos=None):
@@ -67,7 +68,6 @@ class PestañaObjetos(QWidget):
     def __init__(self, lu_administrador):
         super().__init__()
         self.lu_admin = lu_administrador 
-        self.tiempo_autorizacion = None 
         self.inicializar_ui()
 
     def inicializar_ui(self):
@@ -169,18 +169,10 @@ class PestañaObjetos(QWidget):
                 self.tabla.setRowHidden(fila, True)
 
     def verificar_autorizacion(self, requiere_siempre=False):
-        ahora = datetime.now()
-        
-        if not requiere_siempre and self.tiempo_autorizacion:
-            if (ahora - self.tiempo_autorizacion).total_seconds() < 300:
-                return True 
-                
-        password, ok = QInputDialog.getText(self, "Autorización de RRHH", 
-                                            "Ingrese contraseña para habilitar edición:", 
+        password, ok = QInputDialog.getText(self, "Autorización Requerida", 
+                                            "Ingrese contraseña de autorización:", 
                                             QLineEdit.EchoMode.Password)
-        if ok and password == "Ingeniumcei26":
-            if not requiere_siempre:
-                self.tiempo_autorizacion = datetime.now() 
+        if ok and (validar_contrasena(password, rol="rrhh") or validar_contrasena(password, rol="hacienda")):
             return True
         elif ok:
             QMessageBox.warning(self, "Acceso Denegado", "Contraseña incorrecta.")

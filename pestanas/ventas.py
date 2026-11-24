@@ -9,6 +9,7 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QFont
 
 import backend.db_ventas as backend
+from backend.seguridad import validar_contrasena
 
 class PestañaVentas(QWidget):
     def __init__(self, lu_administrador):
@@ -16,7 +17,6 @@ class PestañaVentas(QWidget):
         self.lu_admin = lu_administrador 
         
         self.carrito = {} 
-        self.tiempo_autorizacion = None
         
         self.ventas_recientes = {}   
         self.ventas_deshechas = {}   
@@ -114,6 +114,8 @@ class PestañaVentas(QWidget):
         layout_selector = QHBoxLayout()
         self.combo_articulos = QComboBox()
         self.combo_articulos.setObjectName("combo_articulos")
+        from backend.utils_vistas import estabilizar_combobox
+        estabilizar_combobox(self.combo_articulos)
         layout_selector.addWidget(self.combo_articulos, stretch=1)
         
         btn_agregar = QPushButton("Agregar al Carrito")
@@ -210,11 +212,29 @@ class PestañaVentas(QWidget):
         self.actualizar_historial_con_deshechas()
 
     def cargar_articulos(self):
+        # Si el usuario tiene el menú desplegable abierto, no interrumpir la interacción
+        if self.combo_articulos.view() and self.combo_articulos.view().isVisible():
+            return
+
         self.lista_bd = backend.obtener_articulos_venta()
+        # Orden alfabético estricto e insensible a mayúsculas
+        self.lista_bd = sorted(self.lista_bd, key=lambda x: str(x['articulo']).strip().lower())
+
+        art_actual = self.combo_articulos.currentData()
+        id_actual = art_actual['id'] if isinstance(art_actual, dict) and 'id' in art_actual else None
+
+        self.combo_articulos.blockSignals(True)
         self.combo_articulos.clear()
-        for a in self.lista_bd:
+        indice_a_seleccionar = -1
+        for idx, a in enumerate(self.lista_bd):
             precio_float = float(a['precio'])
             self.combo_articulos.addItem(f"{a['articulo']} - $ {precio_float:.2f} (Stock: {a['stock']})", a)
+            if id_actual is not None and a['id'] == id_actual:
+                indice_a_seleccionar = idx
+
+        if indice_a_seleccionar != -1:
+            self.combo_articulos.setCurrentIndex(indice_a_seleccionar)
+        self.combo_articulos.blockSignals(False)
 
     def agregar_al_carrito(self):
         if self.combo_articulos.currentIndex() == -1: return
@@ -316,12 +336,8 @@ class PestañaVentas(QWidget):
         else: QMessageBox.critical(self, "Error", r)
 
     def verificar_pass_hacienda(self):
-        ahora = datetime.now()
-        if self.tiempo_autorizacion and (ahora - self.tiempo_autorizacion).total_seconds() < 300:
-            return True 
-        pwd, ok = QInputDialog.getText(self, "Seguridad", "Contraseña de Hacienda:", QLineEdit.EchoMode.Password)
-        if ok and pwd == "Ingeniumcei26":
-            self.tiempo_autorizacion = datetime.now()
+        pwd, ok = QInputDialog.getText(self, "Seguridad", "Ingrese contraseña de autorización:", QLineEdit.EchoMode.Password)
+        if ok and validar_contrasena(pwd, rol="hacienda"):
             return True
         elif ok: QMessageBox.warning(self, "Denegado", "Contraseña incorrecta.")
         return False

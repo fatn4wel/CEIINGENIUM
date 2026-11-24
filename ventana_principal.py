@@ -54,7 +54,6 @@ class VentanaPrincipal(QWidget):
         import sys
         ruta_logo = os.path.join(sys._MEIPASS, "logo.png") if hasattr(sys, '_MEIPASS') else "logo.png"
         self.setWindowIcon(QIcon(ruta_logo)) 
-        self.showMaximized() 
 
         # LAYOUT PRINCIPAL VERTICAL (El "Sándwich")
         layout_principal = QVBoxLayout(self)
@@ -114,7 +113,7 @@ class VentanaPrincipal(QWidget):
         self.btn_logout = QPushButton("Cerrar Sesión")
         self.btn_logout.setObjectName("btn_logout_top")
         self.btn_logout.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_logout.clicked.connect(self.close) 
+        self.btn_logout.clicked.connect(self.cerrar_sesion) 
         layout_top.addWidget(self.btn_logout)
 
         layout_principal.addWidget(self.top_bar)
@@ -131,7 +130,7 @@ class VentanaPrincipal(QWidget):
         # 1. PRIMER RESORTE (Empuja los botones desde la izquierda hacia el centro)
         layout_nav.addStretch() 
 
-        opciones = ["Préstamos", "Ventas", "Pancitos", "Perdidos", "Guardados", "Librería", "Objetos", "Libros", "Biblioteca", "Carnets", "Atención", "Historial"]
+        self.opciones = ["Préstamos", "Ventas", "Pancitos", "Perdidos", "Guardados", "Librería", "Objetos", "Libros", "Biblioteca", "Carnets", "Atención", "Historial"]
         
         # Acceso a Configuración para los primeros 5 roles (Presidencia, Comisión, Recursos Humanos, Informática, Asienda)
         cargo_clean = self.cargo_usuario.lower().strip() if self.cargo_usuario else ""
@@ -143,11 +142,11 @@ class VentanaPrincipal(QWidget):
             "asienda", "hacienda"
         ]
         if cargo_clean in cargos_configuracion:
-            opciones.append("Configuración")
+            self.opciones.append("Configuración")
             
         self.botones_menu = []
         
-        for texto in opciones:
+        for texto in self.opciones:
             btn = QPushButton(texto)
             btn.setProperty("class", "nav_button") 
             btn.setCheckable(True)
@@ -172,44 +171,12 @@ class VentanaPrincipal(QWidget):
 
         self.contenedor_paginas = QStackedWidget()
         self.contenedor_paginas.setObjectName("content_area") 
+        self.paginas_instanciadas = {}
   
-        for texto in opciones:
-            if texto == "Carnets":
-                pagina = PestañaCarnets(self.lu_usuario)
-            elif texto == "Objetos":                    
-                pagina = PestañaObjetos(self.lu_usuario) 
-            elif texto == "Préstamos":
-                pagina = PestañaPrestamos(self.lu_usuario)
-            elif texto == "Librería":
-                pagina = PestañaLibreria(self.lu_usuario)
-            elif texto == "Ventas":
-                pagina = PestañaVentas(self.lu_usuario)  
-            elif texto == "Pancitos":
-                pagina = PestañaPancitos(self.lu_usuario) 
-            elif texto == "Perdidos":
-                pagina = PestañaPerdidos(self.lu_usuario)
-            elif texto == "Guardados":
-                pagina = PestañaGuardados(self.lu_usuario)
-            elif texto == "Libros":
-                pagina = PestañaLibros(self.lu_usuario)
-            elif texto == "Biblioteca":
-                pagina = PestañaBiblioteca(self.lu_usuario)
-            elif texto == "Historial":
-                pagina = PestañaHistorialGeneral(self.lu_usuario)
-            elif texto == "Atención":
-                pagina = PestañaComision(self.lu_usuario)
-            elif texto == "Configuración":
-                pagina = PestañaConfiguracion(self.lu_usuario)
-            else:
-                pagina = QFrame()
-                layout_pag = QVBoxLayout(pagina)
-                layout_pag.setContentsMargins(50, 50, 50, 50)
-                titulo = QLabel(texto)
-                titulo.setObjectName("section_title")
-                titulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                layout_pag.addWidget(titulo)
-                layout_pag.addStretch() 
-            self.contenedor_paginas.addWidget(pagina)
+        # Insertamos placeholders para cada opción para reservar el índice
+        for _ in self.opciones:
+            placeholder = QFrame()
+            self.contenedor_paginas.addWidget(placeholder)
 
         layout_content_card.addWidget(self.contenedor_paginas)
         
@@ -220,26 +187,98 @@ class VentanaPrincipal(QWidget):
 
         if self.botones_menu:
             self.botones_menu[0].setChecked(True) 
+            self._obtener_o_crear_pagina(0)
             self.contenedor_paginas.setCurrentIndex(0) 
 
         self.cargar_estilos()
+        self.showMaximized()
+
+    def _obtener_o_crear_pagina(self, indice):
+        if indice in self.paginas_instanciadas:
+            return self.paginas_instanciadas[indice]
+            
+        texto = self.opciones[indice]
+        if texto == "Carnets":
+            pagina = PestañaCarnets(self.lu_usuario)
+        elif texto == "Objetos":                    
+            pagina = PestañaObjetos(self.lu_usuario) 
+        elif texto == "Préstamos":
+            pagina = PestañaPrestamos(self.lu_usuario)
+        elif texto == "Librería":
+            pagina = PestañaLibreria(self.lu_usuario)
+        elif texto == "Ventas":
+            pagina = PestañaVentas(self.lu_usuario)  
+        elif texto == "Pancitos":
+            pagina = PestañaPancitos(self.lu_usuario) 
+        elif texto == "Perdidos":
+            pagina = PestañaPerdidos(self.lu_usuario)
+        elif texto == "Guardados":
+            pagina = PestañaGuardados(self.lu_usuario)
+        elif texto == "Libros":
+            pagina = PestañaLibros(self.lu_usuario)
+        elif texto == "Biblioteca":
+            pagina = PestañaBiblioteca(self.lu_usuario)
+        elif texto == "Historial":
+            pagina = PestañaHistorialGeneral(self.lu_usuario)
+        elif texto == "Atención":
+            pagina = PestañaComision(self.lu_usuario)
+        elif texto == "Configuración":
+            pagina = PestañaConfiguracion(self.lu_usuario)
+        else:
+            pagina = QFrame()
+            layout_pag = QVBoxLayout(pagina)
+            layout_pag.setContentsMargins(50, 50, 50, 50)
+            titulo = QLabel(texto)
+            titulo.setObjectName("section_title")
+            titulo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout_pag.addWidget(titulo)
+            layout_pag.addStretch()
+
+        # Reemplazar el placeholder por la página real en la misma posición
+        placeholder = self.contenedor_paginas.widget(indice)
+        self.contenedor_paginas.removeWidget(placeholder)
+        placeholder.deleteLater()
+        self.contenedor_paginas.insertWidget(indice, pagina)
+
+        if self.modo_oscuro:
+            self.aplicar_tema_recursivo(pagina, True)
+
+        # Estabilizar automáticamente todos los menús desplegables de la página
+        from PyQt6.QtWidgets import QComboBox
+        from backend.utils_vistas import estabilizar_combobox
+        for combo in pagina.findChildren(QComboBox):
+            estabilizar_combobox(combo)
+
+        self.paginas_instanciadas[indice] = pagina
+        return pagina
+
+    def cerrar_sesion(self):
+        """Cierra la ventana principal y reabre la pantalla de login."""
+        from ventana_login import VentanaLogin
+        self.login_window = VentanaLogin()
+        self.login_window.show()
+        self.close()
 
     def closeEvent(self, event):
-        for i in range(self.contenedor_paginas.count()):
-            pagina = self.contenedor_paginas.widget(i)
-            if type(pagina).__name__ == "PestañaPrestamos": 
-                pagina.forzar_cierre_seguro()
-            elif type(pagina).__name__ == "PestañaVentas": 
-                pagina.forzar_cierre_seguro()
-            elif type(pagina).__name__ == "PestañaPerdidos": 
-                pagina.forzar_cierre_seguro()
-            elif type(pagina).__name__ == "PestañaGuardados":
-                pagina.forzar_cierre_seguro()
-            elif type(pagina).__name__ == "PestañaBiblioteca":
-                pagina.forzar_cierre_seguro()
+        # 1. Detener el timer de backup diario
+        if hasattr(self, "timer_backup_diario") and self.timer_backup_diario.isActive():
+            self.timer_backup_diario.stop()
 
+        # 2. Detener timers y ejecutar cierre seguro de pestañas activas
+        for pagina in list(self.paginas_instanciadas.values()):
+            if hasattr(pagina, "timer") and hasattr(pagina.timer, "stop"):
+                pagina.timer.stop()
+            if hasattr(pagina, "timer_sincronizacion") and hasattr(pagina.timer_sincronizacion, "stop"):
+                pagina.timer_sincronizacion.stop()
+            if hasattr(pagina, "forzar_cierre_seguro"):
+                try:
+                    pagina.forzar_cierre_seguro()
+                except Exception as e:
+                    print(f"Error en cierre seguro de pestaña: {e}")
+
+        # 3. Registrar el tiempo de sesión en segundo plano (asíncrono, nunca congela la UI)
         horas_totales = (datetime.now() - self.hora_ingreso).total_seconds() / 3600.0
-        backend_auth.registrar_cierre_sesion(self.lu_usuario, horas_totales)
+        backend_auth.registrar_cierre_sesion_async(self.lu_usuario, horas_totales)
         
         event.accept()
 
@@ -247,8 +286,10 @@ class VentanaPrincipal(QWidget):
         btn = self.sender()
         try:
             indice = self.botones_menu.index(btn)
+            self._obtener_o_crear_pagina(indice)
             self.contenedor_paginas.setCurrentIndex(indice)
-        except ValueError: pass
+        except ValueError:
+            pass
 
     def cargar_config_tema(self):
         import json
@@ -280,53 +321,73 @@ class VentanaPrincipal(QWidget):
         else:
             self.btn_tema_toggle.setText("🌙 Modo Oscuro")
 
-    def aplicar_tema_recursivo(self, widget, is_dark):
-        if hasattr(widget, "styleSheet") and widget.styleSheet():
-            ss = widget.styleSheet()
-            if is_dark:
-                # Reemplazo de colores claros inline por colores oscuros compatibles
-                ss = ss.replace("background-color: white;", "background-color: #1e1e2a;")
-                ss = ss.replace("background-color: white", "background-color: #1e1e2a")
-                ss = ss.replace("background-color: #f1faff;", "background-color: #151522;")
-                ss = ss.replace("background-color: #f1faff", "background-color: #151522")
-                ss = ss.replace("background-color: #f8f9fa;", "background-color: #151522;")
-                ss = ss.replace("background-color: #f8f9fa", "background-color: #151522")
-                ss = ss.replace("color: #333;", "color: #e0e0e9;")
-                ss = ss.replace("color: #333", "color: #e0e0e9")
-                ss = ss.replace("color: #555;", "color: #a0a0bf;")
-                ss = ss.replace("color: #555", "color: #a0a0bf")
-                ss = ss.replace("color: #666;", "color: #a0a0bf;")
-                ss = ss.replace("color: #666", "color: #a0a0bf")
-                ss = ss.replace("border: 1px solid #ccc;", "border: 1px solid #2d2d3f;")
-                ss = ss.replace("border: 1px solid #ccc", "border: 1px solid #2d2d3f")
-                ss = ss.replace("border: 1px solid #ddd;", "border: 1px solid #2d2d3f;")
-                ss = ss.replace("border: 1px solid #ddd", "border: 1px solid #2d2d3f")
-            else:
-                # Reemplazo inverso de colores oscuros inline por colores claros
-                ss = ss.replace("background-color: #1e1e2a;", "background-color: white;")
-                ss = ss.replace("background-color: #1e1e2a", "background-color: white")
-                ss = ss.replace("background-color: #151522;", "background-color: #f1faff;")
-                ss = ss.replace("background-color: #151522", "background-color: #f1faff")
-                ss = ss.replace("color: #e0e0e9;", "color: #333;")
-                ss = ss.replace("color: #e0e0e9", "color: #333")
-                ss = ss.replace("color: #a0a0bf;", "color: #666;")
-                ss = ss.replace("color: #a0a0bf", "color: #666")
-                ss = ss.replace("border: 1px solid #2d2d3f;", "border: 1px solid #ccc;")
-                ss = ss.replace("border: 1px solid #2d2d3f", "border: 1px solid #ccc")
-            widget.setStyleSheet(ss)
-        
-        # Propagar a todos los componentes hijos
-        for child in widget.findChildren(QWidget):
-            self.aplicar_tema_recursivo(child, is_dark)
+    def aplicar_tema_recursivo(self, root_widget, is_dark):
+        widgets = root_widget.findChildren(QWidget)
+        if root_widget != self:
+            widgets = [root_widget] + widgets
+        for widget in widgets:
+            if hasattr(widget, "styleSheet") and widget.styleSheet():
+                ss = widget.styleSheet()
+                if is_dark:
+                    # Reemplazo de colores claros inline por colores oscuros compatibles
+                    ss = ss.replace("background-color: white;", "background-color: #1e1e2a;")
+                    ss = ss.replace("background-color: white", "background-color: #1e1e2a")
+                    ss = ss.replace("background-color: #f1faff;", "background-color: #151522;")
+                    ss = ss.replace("background-color: #f1faff", "background-color: #151522")
+                    ss = ss.replace("background-color: #f8fdff;", "background-color: #151522;")
+                    ss = ss.replace("background-color: #f8fdff", "background-color: #151522")
+                    ss = ss.replace("background-color: #caf0f8;", "background-color: #1a1a24;")
+                    ss = ss.replace("background-color: #caf0f8", "background-color: #1a1a24")
+                    ss = ss.replace("background-color: #f8f9fa;", "background-color: #151522;")
+                    ss = ss.replace("background-color: #f8f9fa", "background-color: #151522")
+                    ss = ss.replace("background-color: #e0e0e0;", "background-color: #2d2d3f;")
+                    ss = ss.replace("background-color: #e0e0e0", "background-color: #2d2d3f")
+                    ss = ss.replace("color: #333;", "color: #e0e0e9;")
+                    ss = ss.replace("color: #333", "color: #e0e0e9")
+                    ss = ss.replace("color: #555;", "color: #a0a0bf;")
+                    ss = ss.replace("color: #555", "color: #a0a0bf")
+                    ss = ss.replace("color: #666;", "color: #a0a0bf;")
+                    ss = ss.replace("color: #666", "color: #a0a0bf")
+                    ss = ss.replace("color: #1e293b;", "color: #e0e0e9;")
+                    ss = ss.replace("color: #1e293b", "color: #e0e0e9")
+                    ss = ss.replace("color: #64748b;", "color: #a0a0bf;")
+                    ss = ss.replace("color: #64748b", "color: #a0a0bf")
+                    ss = ss.replace("color: black;", "color: #e0e0e9;")
+                    ss = ss.replace("color: black", "color: #e0e0e9")
+                    ss = ss.replace("color: #333;", "color: #e0e0e9;")
+                    ss = ss.replace("color: #333", "color: #e0e0e9")
+                    ss = ss.replace("border: 1px solid #ccc;", "border: 1px solid #2d2d3f;")
+                    ss = ss.replace("border: 1px solid #ccc", "border: 1px solid #2d2d3f")
+                    ss = ss.replace("border: 1px solid #ddd;", "border: 1px solid #2d2d3f;")
+                    ss = ss.replace("border: 1px solid #ddd", "border: 1px solid #2d2d3f")
+                else:
+                    # Reemplazo inverso de colores oscuros inline por colores claros
+                    ss = ss.replace("background-color: #1e1e2a;", "background-color: white;")
+                    ss = ss.replace("background-color: #1e1e2a", "background-color: white")
+                    ss = ss.replace("background-color: #151522;", "background-color: #f1faff;")
+                    ss = ss.replace("background-color: #151522", "background-color: #f1faff")
+                    ss = ss.replace("background-color: #2d2d3f;", "background-color: #e0e0e0;")
+                    ss = ss.replace("background-color: #2d2d3f", "background-color: #e0e0e0")
+                    ss = ss.replace("color: #e0e0e9;", "color: #333;")
+                    ss = ss.replace("color: #e0e0e9", "color: #333")
+                    ss = ss.replace("color: #a0a0bf;", "color: #666;")
+                    ss = ss.replace("color: #a0a0bf", "color: #666")
+                    ss = ss.replace("border: 1px solid #2d2d3f;", "border: 1px solid #ccc;")
+                    ss = ss.replace("border: 1px solid #2d2d3f", "border: 1px solid #ccc")
+                widget.setStyleSheet(ss)
 
     def cargar_estilos(self):
         try:
-            import os
-            import sys
-            archivo_qss = "estilos_oscuros.qss" if self.modo_oscuro else "estilos.qss"
-            ruta_qss = os.path.join(sys._MEIPASS, archivo_qss) if hasattr(sys, '_MEIPASS') else archivo_qss
-            with open(ruta_qss, "r", encoding='utf-8') as f:
-                self.setStyleSheet(f.read())
+            from PyQt6.QtWidgets import QApplication
+            from backend.estilos_datos import obtener_estilo
+            
+            estilo = obtener_estilo(self.modo_oscuro)
+            
+            # Aplicar a nivel global de la aplicación para que todos los diálogos (QInputDialog, QMessageBox, QDialog)
+            # adopten el tema oscuro/claro inmediatamente
+            app = QApplication.instance()
+            if app:
+                app.setStyleSheet(estilo)
             
             # Aplicamos recursivamente los estilos para sobreescribir estilos inline
             self.aplicar_tema_recursivo(self, self.modo_oscuro)

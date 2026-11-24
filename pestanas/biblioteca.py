@@ -110,7 +110,10 @@ class PestañaBiblioteca(QWidget):
         
         layout_obj.addWidget(QLabel("Seleccionar libro/apunte a prestar:"))
         self.combo_objetos = QComboBox()
+        self.combo_objetos.setObjectName("combo_objetos")
         self.combo_objetos.setStyleSheet("padding: 8px; border: 1px solid #ccc;")
+        from backend.utils_vistas import estabilizar_combobox
+        estabilizar_combobox(self.combo_objetos)
         layout_obj.addWidget(self.combo_objetos)
         
         self.btn_prestar = QPushButton("✅ Asignar Préstamo (8 Días)")
@@ -191,9 +194,26 @@ class PestañaBiblioteca(QWidget):
         self.lbl_info_bene.setText(texto_html)
 
     def cargar_combo_objetos(self):
+        # Si el usuario tiene el menú desplegable abierto, no interrumpir la interacción
+        if self.combo_objetos.view() and self.combo_objetos.view().isVisible():
+            return
+
+        libros = backend.buscar_libros_disponibles()
+        # Orden alfabético estricto e insensible a mayúsculas
+        libros = sorted(libros, key=lambda x: str(x['nombre']).strip().lower())
+
+        id_actual = self.combo_objetos.currentData()
+        self.combo_objetos.blockSignals(True)
         self.combo_objetos.clear()
-        for lib in backend.buscar_libros_disponibles():
+        indice_a_seleccionar = -1
+        for idx, lib in enumerate(libros):
             self.combo_objetos.addItem(f"{lib['nombre']} (Disp: {lib['disponible']})", lib['id'])
+            if id_actual is not None and lib['id'] == id_actual:
+                indice_a_seleccionar = idx
+
+        if indice_a_seleccionar != -1:
+            self.combo_objetos.setCurrentIndex(indice_a_seleccionar)
+        self.combo_objetos.blockSignals(False)
 
     def ejecutar_prestamo(self):
         if not self.beneficiario_actual or self.combo_objetos.currentIndex() == -1: return
@@ -244,7 +264,7 @@ class PestañaBiblioteca(QWidget):
                 item_est = QTableWidgetItem("🟢 Devuelto")
                 item_est.setForeground(QColor("#4CAF50"))
                 self.tabla.setItem(f_idx, 7, item_est)
-                self.tabla.setCellWidget(f_idx, 8, QLabel("")) 
+                self.tabla.setItem(f_idx, 8, QTableWidgetItem("")) 
             else: # devuelto IS NULL (activo) o devuelto = 2 (procesando)
                 self.tabla.setItem(f_idx, 6, QTableWidgetItem("-"))
                 
@@ -365,7 +385,7 @@ class PestañaBiblioteca(QWidget):
         # Si escriben 7 o más números (un DNI completo), traducimos ese DNI a LU internamente
         lu_traducido = None
         if t.isdigit() and len(t) >= 7:
-            b = back_alumno.buscar_beneficiario(t) # ¡Aquí usamos back_alumno!
+            b = back_alumno.buscar_beneficiario(t, actualizar_mantenimiento=False) # ¡Aquí usamos back_alumno sin bloquear la UI!
             if b:
                 lu_traducido = str(b['lu']).lower()
 

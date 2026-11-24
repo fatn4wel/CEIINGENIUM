@@ -1,3 +1,4 @@
+import threading
 from datetime import datetime
 from mysql.connector import Error
 from backend.conexion import obtener_conexion
@@ -81,8 +82,38 @@ def registrar_cierre_sesion(lu_usuario, horas_totales):
                 (round(horas_totales, 2), lu_usuario)
             )
             conexion.commit()
-    except Error as e: 
+    except Exception as e: 
         print(f"Error al cerrar sesión de auditoría: {e}")
+    finally:
+        if 'conexion' in locals() and conexion.is_connected():
+            cursor.close()
+            conexion.close()
+
+def registrar_cierre_sesion_async(lu_usuario, horas_totales):
+    """Ejecuta el registro de cierre de sesión en segundo plano sin bloquear la UI."""
+    t = threading.Thread(target=registrar_cierre_sesion, args=(lu_usuario, horas_totales), daemon=True)
+    t.start()
+
+
+
+def crear_usuario_prueba(lu='123456', contrasena='123456'):
+    """Crea un usuario de prueba si no existe."""
+    try:
+        conexion = obtener_conexion()
+        if conexion.is_connected():
+            cursor = conexion.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM usuarios_comision WHERE lu_usuario = %s", (lu,))
+            if cursor.fetchone():
+                return True  # ya existe
+            cursor.execute(
+                "INSERT INTO usuarios_comision (lu_usuario, contrasena, horas_logueado) VALUES (%s, %s, %s)",
+                (lu, contrasena, 0)
+            )
+            conexion.commit()
+            return True
+    except Exception as e:
+        print(f"Error creando usuario de prueba: {e}")
+        return False
     finally:
         if 'conexion' in locals() and conexion.is_connected():
             cursor.close()

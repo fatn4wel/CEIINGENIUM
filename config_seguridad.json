@@ -1,0 +1,42 @@
+{
+    "_comentario": "Configuracion de contraseñas de gestion del CEI. Las claves maestras desbloquean CUALQUIER modulo de gestion. Las claves de roles permiten accesos por departamento. Puedes agregar o quitar dos o mas contraseñas en cada lista.",
+    "claves_maestras": [
+        "Ingeniumcei26",
+        "CEIMaster2026",
+        "AdminCEI2026"
+    ],
+    "claves_roles": {
+        "rrhh": [
+            "Ingeniumcei26",
+            "RRHH2026",
+            "Recursos2026"
+        ],
+        "hacienda": [
+            "Ingeniumcei26",
+            "Hacienda2026",
+            "Asienda2026"
+        ],
+        "biblioteca": [
+            "Ingeniumcei26",
+            "Biblioteca2026",
+            "LibrosCEI26"
+        ],
+        "comision": [
+            "Ingeniumcei26",
+            "Comision2026"
+        ],
+        "exportaciones": [
+            "Ingeniumcei26",
+            "Export2026"
+        ],
+        "configuracion": [
+            "Ingeniumcei26",
+            "AdminCEI2026"
+        ],
+        "informatica": [
+            "Ingeniumcei26",
+            "Informatica2026",
+            "InfoCEI26"
+        ]
+    }
+}

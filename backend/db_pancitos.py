@@ -4,6 +4,8 @@ from backend.conexion import obtener_conexion
 
 def obtener_stock_hoy():
     """Calcula matemáticamente cuántos panes quedan de los 100 diarios."""
+    cursor = None
+    conexion = None
     try:
         conexion = obtener_conexion()
         if conexion.is_connected():
@@ -15,11 +17,14 @@ def obtener_stock_hoy():
             return max(0, 100 - entregados)
     except Error as e: print(f"Error al obtener stock de pan: {e}")
     finally:
-        if 'conexion' in locals() and conexion.is_connected(): conexion.close()
+        if cursor: cursor.close()
+        if conexion and conexion.is_connected(): conexion.close()
     return 0
 
 def buscar_beneficiario_pan(criterio):
     """Busca al alumno por LU o DNI."""
+    cursor = None
+    conexion = None
     try:
         conexion = obtener_conexion()
         if conexion.is_connected():
@@ -28,11 +33,14 @@ def buscar_beneficiario_pan(criterio):
             return cursor.fetchone()
     except Error as e: print(f"Error al buscar alumno: {e}")
     finally:
-        if 'conexion' in locals() and conexion.is_connected(): conexion.close()
+        if cursor: cursor.close()
+        if conexion and conexion.is_connected(): conexion.close()
     return None
 
 def ya_recibio_hoy(lu_beneficiario):
     """Verifica si el alumno ya retiró su pan en la fecha actual."""
+    cursor = None
+    conexion = None
     try:
         conexion = obtener_conexion()
         if conexion.is_connected():
@@ -42,33 +50,41 @@ def ya_recibio_hoy(lu_beneficiario):
             return cursor.fetchone() is not None
     except Error as e: print(f"Error al comprobar entrega: {e}")
     finally:
-        if 'conexion' in locals() and conexion.is_connected(): conexion.close()
+        if cursor: cursor.close()
+        if conexion and conexion.is_connected(): conexion.close()
     return False
 
 def entregar_pancito(lu_admin, lu_beneficiario, apellido, nombre):
     """Registra la entrega en el historial y le suma 1 al contador del alumno."""
+    cursor = None
+    conexion = None
     try:
         conexion = obtener_conexion()
         if conexion.is_connected():
-            if obtener_stock_hoy() <= 0:
-                return False, "Se agotó el stock de 100 pancitos por hoy."
-            
-            if ya_recibio_hoy(lu_beneficiario):
-                return False, "El alumno ya recibió su beneficio hoy."
-
             cursor = conexion.cursor()
             ahora = datetime.now()
             fecha = ahora.strftime('%Y-%m-%d')
             hora = ahora.strftime('%H:%M:%S')
 
-            # 1. Registrar en el historial de pancitos
+            # 1. Comprobar stock usando la conexión activa (sin abrir conexiones extra)
+            cursor.execute("SELECT COUNT(*) FROM historial_pancitos WHERE fecha = %s AND entrego_pancito = TRUE", (fecha,))
+            entregados = cursor.fetchone()[0]
+            if entregados >= 100:
+                return False, "Se agotó el stock de 100 pancitos por hoy."
+
+            # 2. Comprobar entrega previa usando la misma conexión
+            cursor.execute("SELECT id FROM historial_pancitos WHERE lu_beneficiario = %s AND fecha = %s AND entrego_pancito = TRUE", (lu_beneficiario, fecha))
+            if cursor.fetchone() is not None:
+                return False, "El alumno ya recibió su beneficio hoy."
+
+            # 3. Registrar en el historial de pancitos
             cursor.execute('''
                 INSERT INTO historial_pancitos 
                 (lu_usuario, lu_beneficiario, apellido_beneficiario, nombre_beneficiario, fecha, hora, entrego_pancito)
                 VALUES (%s, %s, %s, %s, %s, %s, TRUE)
             ''', (lu_admin, lu_beneficiario, apellido, nombre, fecha, hora))
 
-            # 2. Sumarle el pan al contador global del alumno
+            # 4. Sumarle el pan al contador global del alumno
             cursor.execute("UPDATE beneficiarios SET pan = pan + 1 WHERE lu = %s", (lu_beneficiario,))
 
             conexion.commit()
@@ -76,10 +92,13 @@ def entregar_pancito(lu_admin, lu_beneficiario, apellido, nombre):
     except Error as e: 
         return False, str(e)
     finally:
-        if 'conexion' in locals() and conexion.is_connected(): conexion.close()
+        if cursor: cursor.close()
+        if conexion and conexion.is_connected(): conexion.close()
 
 def obtener_historial_hoy():
     """Trae solo los movimientos de la fecha actual."""
+    cursor = None
+    conexion = None
     try:
         conexion = obtener_conexion()
         if conexion.is_connected():
@@ -90,5 +109,6 @@ def obtener_historial_hoy():
             return cursor.fetchall()
     except Error as e: print(f"Error historial pancitos: {e}")
     finally:
-        if 'conexion' in locals() and conexion.is_connected(): conexion.close()
+        if cursor: cursor.close()
+        if conexion and conexion.is_connected(): conexion.close()
     return []

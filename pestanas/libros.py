@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (QWidget, QLabel, QLineEdit, QPushButton, QComboBox,
 from PyQt6.QtCore import Qt
 
 import backend.db_libros as backend
+from backend.seguridad import validar_contrasena
 
 class DialogoLibro(QDialog):
     def __init__(self, parent=None, datos=None):
@@ -56,13 +57,10 @@ class PestañaLibros(QWidget):
     def __init__(self, lu_admin):
         super().__init__()
         self.lu_admin = lu_admin 
-        self.tiempo_autorizacion = None
         self.inicializar_ui()
 
     def inicializar_ui(self):
         layout = QVBoxLayout(self)
-        
-        l_sup = QHBoxLayout()
         
         l_sup = QHBoxLayout()
         
@@ -142,11 +140,8 @@ class PestañaLibros(QWidget):
             self.tabla.setRowHidden(fila, item and t not in item.text().lower())
 
     def verificar_pass(self, siempre=False):
-        ahora = datetime.now()
-        if not siempre and self.tiempo_autorizacion and (ahora - self.tiempo_autorizacion).total_seconds() < 600: return True
-        pwd, ok = QInputDialog.getText(self, "Seguridad", "Clave de Biblioteca:", QLineEdit.EchoMode.Password)
-        if ok and pwd == "Ingeniumcei26":
-            if not siempre: self.tiempo_autorizacion = datetime.now()
+        pwd, ok = QInputDialog.getText(self, "Seguridad", "Ingrese contraseña de autorización:", QLineEdit.EchoMode.Password)
+        if ok and validar_contrasena(pwd, rol="rrhh"):
             return True
         elif ok: QMessageBox.warning(self, "Error", "Clave incorrecta.")
         return False
@@ -157,7 +152,10 @@ class PestañaLibros(QWidget):
             if diag.exec():
                 d = diag.obtener_datos()
                 exito, msj = backend.agregar_libro(d['nombre'], d['desc'], d['tipo'], d['cant'], d['disp'], d['veces'], self.lu_admin)
-                if exito: self.actualizar_tabla()
+                if exito:
+                    self.actualizar_tabla()
+                else:
+                    QMessageBox.critical(self, "Error al agregar", msj)
 
     # --- NUEVA FUNCIÓN PARA IMPORTAR ---
     def cargar_excel(self):
@@ -178,10 +176,16 @@ class PestañaLibros(QWidget):
             if diag.exec():
                 d = diag.obtener_datos()
                 exito, msj = backend.editar_libro(datos['id'], d['nombre'], d['desc'], d['tipo'], d['cant'], d['disp'], d['veces'], self.lu_admin)
-                if exito: self.actualizar_tabla()
+                if exito:
+                    self.actualizar_tabla()
+                else:
+                    QMessageBox.critical(self, "Error al editar", msj)
 
     def eliminar(self, id_l, nombre):
         conf = QMessageBox.question(self, "Confirmar", f"¿Eliminar {nombre}?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if conf == QMessageBox.StandardButton.Yes and self.verificar_pass(True):
             exito, msj = backend.eliminar_libro(id_l, nombre, self.lu_admin)
-            if exito: self.actualizar_tabla()
+            if exito:
+                self.actualizar_tabla()
+            else:
+                QMessageBox.critical(self, "Error al eliminar", msj)

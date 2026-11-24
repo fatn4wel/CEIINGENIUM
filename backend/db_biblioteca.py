@@ -7,7 +7,7 @@ def buscar_libros_disponibles():
         conexion = obtener_conexion()
         if conexion.is_connected():
             cursor = conexion.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM libros WHERE disponible > 0 ORDER BY veces_prestado DESC")
+            cursor.execute("SELECT * FROM libros WHERE disponible > 0 ORDER BY nombre ASC")
             return cursor.fetchall()
     except Error as e: print(e); return []
     finally:
@@ -94,11 +94,13 @@ def consolidar_devolucion_biblio(id_p, lu_admin, danado, fecha_real=None):
 
             cursor.execute("SELECT apellidos, nombres FROM beneficiarios WHERE lu = %s", (lu_admin,))
             admin = cursor.fetchone()
+            apellidos_admin = admin['apellidos'] if admin else ""
+            nombres_admin = admin['nombres'] if admin else ""
             
             cursor.execute('''
                 UPDATE historial_biblioteca SET lu_usuario_recibe=%s, apellidos_recibe=%s, nombres_recibe=%s, 
-                fecha_devolucion=%s, hora_devolucion=%s, devuelto=TRUE, objeto_danado=%s, corresponds_falta=%s WHERE id=%s
-            ''', (lu_admin, admin['apellidos'], admin['nombres'], ahora.strftime('%Y-%m-%d'), ahora.strftime('%H:%M:%S'), danado, es_tarde, id_p))
+                fecha_devolucion=%s, hora_devolucion=%s, devuelto=TRUE, objeto_danado=%s, corresponde_falta=%s WHERE id=%s
+            ''', (lu_admin, apellidos_admin, nombres_admin, ahora.strftime('%Y-%m-%d'), ahora.strftime('%H:%M:%S'), danado, es_tarde, id_p))
             
             cursor.execute("UPDATE libros SET disponible = disponible + 1 WHERE id = %s", (p['id_libro'],))
             conexion.commit()

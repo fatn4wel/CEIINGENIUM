@@ -24,11 +24,12 @@ def mantenimiento_penalizaciones(conexion):
     conexion.commit()
     cursor.close()
 
-def buscar_beneficiario(criterio):
+def buscar_beneficiario(criterio, actualizar_mantenimiento=True):
     try:
         conexion = obtener_conexion()
         if conexion.is_connected():
-            mantenimiento_penalizaciones(conexion) 
+            if actualizar_mantenimiento:
+                mantenimiento_penalizaciones(conexion) 
             
             cursor = conexion.cursor(dictionary=True)
             cursor.execute("SELECT * FROM beneficiarios WHERE lu = %s OR dni = %s", (criterio, criterio))
@@ -56,7 +57,7 @@ def obtener_objetos_populares():
         conexion = obtener_conexion()
         if conexion.is_connected():
             cursor = conexion.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM objetos_prestamos WHERE cantidad_disponibles > 0 ORDER BY veces_prestado DESC")
+            cursor.execute("SELECT * FROM objetos_prestamos WHERE cantidad_disponibles > 0 ORDER BY nombre_objeto ASC")
             return cursor.fetchall()
     except Error as e: print(f"Error obtener objetos: {e}")
     finally:
@@ -71,6 +72,8 @@ def validar_y_prestar(lu_beneficiario, id_objeto, nombre_objeto, lu_admin):
             
             cursor.execute("SELECT prestamos_activos, apellidos, nombres, penalizado FROM beneficiarios WHERE lu = %s", (lu_beneficiario,))
             b = cursor.fetchone()
+            if not b:
+                return False, "Beneficiario no encontrado."
             
             if b['penalizado']: return False, "El alumno está penalizado."
             if b['prestamos_activos'] >= 5: return False, "Límite de 5 préstamos alcanzado."
@@ -80,6 +83,8 @@ def validar_y_prestar(lu_beneficiario, id_objeto, nombre_objeto, lu_admin):
 
             cursor.execute("SELECT cantidad_disponibles FROM objetos_prestamos WHERE id = %s", (id_objeto,))
             obj = cursor.fetchone()
+            if not obj:
+                return False, "Objeto no encontrado."
             if obj['cantidad_disponibles'] <= 0: return False, "Objeto agotado."
 
             # --- BUSCAR DATOS DEL ADMINISTRADOR QUE PRESTA ---
@@ -134,12 +139,11 @@ def consolidar_devolucion_db(id_prestamo, lu_admin, objeto_danado, fecha_real_de
         if conexion.is_connected():
             cursor = conexion.cursor(dictionary=True)
             
-            # Comprobar si ya está devuelta definitivamente (devuelto = 1)
-            cursor.execute("SELECT * FROM historial_prestamos WHERE id = %s AND devuelto = 1", (id_prestamo,))
-            if cursor.fetchone(): return False
-
+            # Comprobar si existe y si ya está devuelta definitivamente (devuelto = 1)
             cursor.execute("SELECT * FROM historial_prestamos WHERE id = %s", (id_prestamo,))
             prestamo = cursor.fetchone()
+            if not prestamo or prestamo.get('devuelto') == 1:
+                return False
             
             ahora = fecha_real_devolucion if fecha_real_devolucion else datetime.now()
             fecha_dev = ahora.strftime('%Y-%m-%d')
@@ -153,6 +157,8 @@ def consolidar_devolucion_db(id_prestamo, lu_admin, objeto_danado, fecha_real_de
             
             cursor.execute("SELECT * FROM beneficiarios WHERE lu = %s", (prestamo['lu_beneficiario'],))
             b = cursor.fetchone()
+            if not b:
+                return False
             
             nuevas_faltas = b['faltas']
             nuevo_penalizado = b['penalizado']

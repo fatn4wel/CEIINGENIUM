@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (QWidget, QLabel, QLineEdit, QPushButton, QDoubleSpi
 from PyQt6.QtCore import Qt
 
 import backend.db_libreria as backend
+from backend.seguridad import validar_contrasena
 
 class DialogoArticulo(QDialog):
     def __init__(self, parent=None, datos=None):
@@ -65,7 +66,6 @@ class PestañaLibreria(QWidget):
     def __init__(self, lu_administrador):
         super().__init__()
         self.lu_admin = lu_administrador 
-        self.tiempo_autorizacion = None 
         self.inicializar_ui()
 
     def inicializar_ui(self):
@@ -178,20 +178,13 @@ class PestañaLibreria(QWidget):
                 self.tabla.setRowHidden(fila, True)
 
     def verificar_autorizacion(self, requiere_siempre=False):
-        ahora = datetime.now()
-        if not requiere_siempre and self.tiempo_autorizacion:
-            if (ahora - self.tiempo_autorizacion).total_seconds() < 300:
-                return True 
-                
-        password, ok = QInputDialog.getText(self, "Autorización de Hacienda", 
-                                            "Ingrese contraseña de supervisión:", 
+        password, ok = QInputDialog.getText(self, "Autorización Requerida", 
+                                            "Ingrese contraseña de autorización:", 
                                             QLineEdit.EchoMode.Password)
-        if ok and password == "Ingeniumcei26":
-            if not requiere_siempre:
-                self.tiempo_autorizacion = datetime.now() 
+        if ok and (validar_contrasena(password, rol="rrhh") or validar_contrasena(password, rol="hacienda")):
             return True
         elif ok:
-            QMessageBox.warning(self, "Acceso Denegado", "Contraseña de Hacienda incorrecta.")
+            QMessageBox.warning(self, "Acceso Denegado", "Contraseña incorrecta.")
         return False
 
     def controlador_agregar(self):

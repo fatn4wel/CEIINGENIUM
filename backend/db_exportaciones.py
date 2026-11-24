@@ -23,7 +23,7 @@ def exportar_tabla_simple(nombre_tabla, ruta_archivo):
             
             df.to_excel(ruta_archivo, index=False)
             return True
-    except Error as e: 
+    except Exception as e: 
         print(f"Error al exportar tabla {nombre_tabla}: {e}")
         return False
     finally:

@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QGridLayout, QPushButton,
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 import backend.db_exportaciones as backend
+from backend.seguridad import validar_contrasena
 
 class PestañaHistorialGeneral(QWidget):
     def __init__(self, lu_admin):
@@ -93,8 +94,8 @@ class PestañaHistorialGeneral(QWidget):
 
     # --- LÓGICA DE CONTRASEÑA ---
     def verificar_pass(self):
-        pwd, ok = QInputDialog.getText(self, "Seguridad Requerida", "Ingrese contraseña de Administrador:", QLineEdit.EchoMode.Password)
-        if ok and pwd == "Ingeniumcei26":
+        pwd, ok = QInputDialog.getText(self, "Seguridad Requerida", "Ingrese contraseña de autorización:", QLineEdit.EchoMode.Password)
+        if ok and validar_contrasena(pwd, rol="exportaciones"):
             return True
         elif ok:
             QMessageBox.warning(self, "Acceso Denegado", "Contraseña incorrecta. No se puede exportar.")

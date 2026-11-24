@@ -5,6 +5,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 
 import backend.db_comision as backend
+from backend.seguridad import validar_contrasena
 
 class PestañaComision(QWidget):
     def __init__(self, lu_administrador):
@@ -65,7 +66,6 @@ class PestañaComision(QWidget):
             self.tabla.setRowHeight(fila_idx, 50) 
             
             es_inactivo = str(u['contrasena']).startswith("BLOQUEADO_")
-            color_texto = QColor("#f44336") if es_inactivo else QColor("#000000") # Rojo si está bloqueado
             
             items = [
                 QTableWidgetItem(str(u['lu'])),
@@ -76,9 +76,10 @@ class PestañaComision(QWidget):
                 QTableWidgetItem(f"{float(u['horas_logueado']):.1f} hrs")
             ]
             
-            # Pintar la fila completa
+            # Pintar en rojo solo si está bloqueado; si está activo, respetar la paleta del tema (claro/oscuro)
             for col_idx, item in enumerate(items):
-                item.setForeground(color_texto)
+                if es_inactivo:
+                    item.setForeground(QColor("#f44336"))
                 self.tabla.setItem(fila_idx, col_idx, item)
 
             # BOTONES DE ACCIÓN
@@ -122,8 +123,8 @@ class PestañaComision(QWidget):
             self.tabla.setRowHidden(fila, not mostrar_fila)
 
     def verificar_pass_admin(self):
-        password, ok = QInputDialog.getText(self, "Seguridad Requerida", "Ingrese la clave de Administrador Master:", QLineEdit.EchoMode.Password)
-        if ok and password == "Ingeniumcei26":
+        password, ok = QInputDialog.getText(self, "Seguridad Requerida", "Ingrese contraseña de autorización:", QLineEdit.EchoMode.Password)
+        if ok and validar_contrasena(password, rol="comision"):
             return True
         elif ok:
             QMessageBox.warning(self, "Acceso Denegado", "Clave incorrecta.")

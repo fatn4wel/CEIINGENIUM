@@ -1,3 +1,4 @@
+import pandas as pd
 from datetime import datetime
 from mysql.connector import Error
 from backend.conexion import obtener_conexion

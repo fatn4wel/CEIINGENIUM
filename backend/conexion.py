@@ -5,7 +5,8 @@ DB_CONFIG = {
     'user': 'root',
     'password': 'CEI_db_2026', 
     'database': 'gestion_comision_INGENIUM',
-    'use_pure': True  
+    'use_pure': True,
+    'connection_timeout': 5
 }
 
 def obtener_conexion():

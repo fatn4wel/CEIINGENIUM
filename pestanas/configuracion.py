@@ -1,11 +1,12 @@
 import os
 from PyQt6.QtWidgets import (QWidget, QLabel, QLineEdit, QPushButton, QComboBox,
                              QVBoxLayout, QHBoxLayout, QMessageBox, QFrame, 
-                             QTableWidget, QTableWidgetItem, QHeaderView, QGridLayout)
+                             QTableWidget, QTableWidgetItem, QHeaderView, QGridLayout, QInputDialog)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 
 import backend.db_comision as backend
+from backend.seguridad import validar_contrasena
 
 class PestañaConfiguracion(QWidget):
     def __init__(self, lu_administrador):
@@ -249,6 +250,12 @@ class PestañaConfiguracion(QWidget):
         )
 
         if confirmacion == QMessageBox.StandardButton.Yes:
+            pwd, ok = QInputDialog.getText(self, "Seguridad Requerida", "Ingrese contraseña de autorización:", QLineEdit.EchoMode.Password)
+            if not ok or not validar_contrasena(pwd, rol="configuracion"):
+                if ok:
+                    QMessageBox.warning(self, "Acceso Denegado", "Contraseña incorrecta. Operación cancelada.")
+                return
+
             exito, msj = backend.actualizar_cargo_beneficiario(lu, nuevo_cargo)
             if exito:
                 QMessageBox.information(self, "Éxito", f"¡El cargo de {nombre} ha sido actualizado a '{nuevo_cargo}'!")

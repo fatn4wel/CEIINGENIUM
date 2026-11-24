@@ -58,6 +58,27 @@ def asociar_foto_beneficiario(dni, ruta_completa):
             cursor.close()
             conexion.close()
 
+def asociar_fotos_masivo(lista_fotos):
+    """Asocia un lote de fotos [(ruta_completa, dni), ...] en una sola transacción eficiente."""
+    cursor = None
+    conexion = None
+    try:
+        conexion = obtener_conexion()
+        if conexion.is_connected():
+            cursor = conexion.cursor()
+            cursor.executemany("UPDATE beneficiarios SET ruta_foto = %s WHERE dni = %s", lista_fotos)
+            conexion.commit()
+            return True, cursor.rowcount
+    except Error as e:
+        print(f"Error asociando fotos por lote: {e}")
+        return False, str(e)
+    finally:
+        if cursor:
+            cursor.close()
+        if conexion and conexion.is_connected():
+            conexion.close()
+    return False, 0
+
 def aplicar_penalizacion_db(lu_beneficiario, razon, horas_penalidad, lu_usuario_penaliza):
     """Cambia el estado a penalizado (con horas) e inserta una fila de auditoría."""
     try:

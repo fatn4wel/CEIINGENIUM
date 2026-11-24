@@ -6,6 +6,15 @@
     color: #e0e0e9; /* Texto claro predeterminado */
 }
 
+/* Fondo oscuro global para todos los QWidget dentro del área de contenido */
+QWidget {
+    background-color: #12121c;
+}
+
+QLabel {
+    background-color: transparent;
+}
+
 /* ========================================================================
    1. ESTILOS PARA LA VENTANA DE INICIO DE SESIÓN (VentanaLogin)
    ======================================================================== */
@@ -35,17 +44,16 @@ QLabel#login_label {
 }
 
 /* Campos de entrada de texto modernos */
-QLineEdit {
+QLineEdit, QTextEdit, QPlainTextEdit, QDateEdit, QTimeEdit {
     background-color: #1e1e2a; /* Gris azulado muy oscuro */
     color: #e0e0e9;
     border: 2px solid #2d2d3f;
     border-radius: 10px;
-    padding: 12px 15px;
+    padding: 10px 14px;
     font-size: 14px;
-    margin-bottom: 20px;
 }
 
-QLineEdit:focus {
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QDateEdit:focus, QTimeEdit:focus {
     border: 2px solid #00b4d8; /* Borde cian brillante al hacer clic */
     background-color: #1a1a24;
 }
@@ -193,12 +201,16 @@ QTableWidget {
     font-size: 13px;
 }
 
-QHeaderView::section {
+QHeaderView::section, QTableCornerButton::section {
     background-color: #0f0f16;
     color: #e0e0e9;
     padding: 8px;
     font-weight: bold;
     border: none;
+}
+
+QTableWidget QLabel {
+    background-color: transparent;
 }
 
 QTableWidget::item {
@@ -318,4 +330,101 @@ QComboBox QAbstractItemView {
     selection-background-color: #00b4d8;
     selection-color: white;
     padding: 5px;
+}
+
+/* ========================================================================
+   DIÁLOGOS, MENSAJES Y VENTANAS EMERGENTES (QDialog, QMessageBox, QInputDialog)
+   ======================================================================== */
+QDialog, QMessageBox, QInputDialog {
+    background-color: #1a1a24;
+    color: #e0e0e9;
+}
+
+QDialog QLabel, QMessageBox QLabel, QInputDialog QLabel {
+    color: #e0e0e9;
+    background-color: transparent;
+    font-size: 13px;
+}
+
+/* Entradas de texto y áreas multilínea dentro de diálogos (como Descripción en Guardados y Perdidos) */
+QDialog QLineEdit, QDialog QTextEdit, QDialog QPlainTextEdit {
+    background-color: #151522;
+    color: #e0e0e9;
+    border: 2px solid #2d2d3f;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+QDialog QLineEdit:focus, QDialog QTextEdit:focus, QDialog QPlainTextEdit:focus {
+    border: 2px solid #00b4d8;
+    background-color: #1a1a24;
+}
+
+QDialog QComboBox {
+    background-color: #151522;
+    color: #e0e0e9;
+    border: 2px solid #2d2d3f;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+QDialog QComboBox:focus {
+    border: 2px solid #00b4d8;
+}
+
+/* Campos de entrada numérica (SpinBoxes en Arqueo de Caja y diálogos) */
+QSpinBox, QDoubleSpinBox {
+    background-color: #151522;
+    color: #00b4d8;
+    border: 2px solid #2d2d3f;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 15px;
+    font-weight: bold;
+    selection-background-color: #00b4d8;
+    selection-color: white;
+}
+
+QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 2px solid #00b4d8;
+    background-color: #1a1a24;
+}
+
+QSpinBox::up-button, QDoubleSpinBox::up-button,
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    background-color: #2d2d3f;
+    border: 1px solid #1a1a24;
+    border-radius: 4px;
+    width: 24px;
+    margin: 1px;
+}
+
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+    background-color: #00b4d8;
+}
+
+/* Botones en diálogos (OK, Cancel, Aceptar, etc.) */
+QDialog QPushButton, QMessageBox QPushButton, QInputDialog QPushButton {
+    background-color: #00b4d8;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: bold;
+    min-width: 80px;
+}
+
+QDialog QPushButton:hover, QMessageBox QPushButton:hover, QInputDialog QPushButton:hover {
+    background-color: #0077b6;
+}
+
+QDialog QPushButton:pressed, QMessageBox QPushButton:pressed, QInputDialog QPushButton:pressed {
+    background-color: #03045e;
+}
+
+QDialogButtonBox {
+    dialogbuttonbox-buttons-have-icons: 0;
 }

@@ -9,6 +9,7 @@ from PyQt6.QtGui import QColor, QPixmap # <--- Agregamos QPixmap
 
 import backend.db_carnets as backend
 from backend.utils_vistas import procesar_avatar_circular
+from backend.seguridad import validar_contrasena
 
 class PestañaCarnets(QWidget):
     def __init__(self, lu_administrador):
@@ -73,85 +74,89 @@ class PestañaCarnets(QWidget):
 
     def actualizar_tabla_datos(self):
         beneficiarios = backend.obtener_todos_beneficiarios()
-        self.tabla.setRowCount(0)
+        
+        # Desactivamos el redibujado de la tabla para acelerar la carga exponencialmente
+        self.tabla.setUpdatesEnabled(False)
+        try:
+            self.tabla.clearContents()
+            total_filas = len(beneficiarios)
+            self.tabla.setRowCount(total_filas)
+            self.tabla.verticalHeader().setDefaultSectionSize(65)
 
-        for fila_idx, b in enumerate(beneficiarios):
-            self.tabla.insertRow(fila_idx)
-            self.tabla.setRowHeight(fila_idx, 65) 
-            
-            self.tabla.setItem(fila_idx, 0, QTableWidgetItem(str(b['apellidos'])))
-            self.tabla.setItem(fila_idx, 1, QTableWidgetItem(str(b['nombres'])))
-            self.tabla.setItem(fila_idx, 2, QTableWidgetItem(str(b['dni'])))
-            self.tabla.setItem(fila_idx, 3, QTableWidgetItem(str(b['lu'])))
-            self.tabla.setItem(fila_idx, 4, QTableWidgetItem(str(b['telefono'])))
-            self.tabla.setItem(fila_idx, 5, QTableWidgetItem(str(b['carrera'])))
-            
-            lbl_foto = QLabel()
-            lbl_foto.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl_foto.setContentsMargins(5, 5, 5, 5) 
-            ruta_img = b['ruta_foto']
-            
-            # --- NUEVO: Habilitar clic en cada foto de la tabla ---
-            lbl_foto.setCursor(Qt.CursorShape.PointingHandCursor)
-            # Usamos lambda para "guardar" los datos específicos de esta fila en el evento de clic
-            lbl_foto.mousePressEvent = lambda event, r=ruta_img, a=b['apellidos'], n=b['nombres']: self.mostrar_foto_ampliada(r, a, n)
-            # --------------------------------------------------------
+            tamano_tabla = 50
 
-            tamano_tabla = 50 
+            for fila_idx, b in enumerate(beneficiarios):
+                self.tabla.setItem(fila_idx, 0, QTableWidgetItem(str(b['apellidos'])))
+                self.tabla.setItem(fila_idx, 1, QTableWidgetItem(str(b['nombres'])))
+                self.tabla.setItem(fila_idx, 2, QTableWidgetItem(str(b['dni'])))
+                self.tabla.setItem(fila_idx, 3, QTableWidgetItem(str(b['lu'])))
+                self.tabla.setItem(fila_idx, 4, QTableWidgetItem(str(b['telefono'])))
+                self.tabla.setItem(fila_idx, 5, QTableWidgetItem(str(b['carrera'])))
+                
+                lbl_foto = QLabel()
+                lbl_foto.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                lbl_foto.setContentsMargins(5, 5, 5, 5) 
+                ruta_img = b['ruta_foto']
+                
+                # --- Habilitar clic en cada foto de la tabla ---
+                lbl_foto.setCursor(Qt.CursorShape.PointingHandCursor)
+                lbl_foto.mousePressEvent = lambda event, r=ruta_img, a=b['apellidos'], n=b['nombres']: self.mostrar_foto_ampliada(r, a, n)
 
-            # CACHÉ DE IMÁGENES
-            if ruta_img not in self.cache_avatares:
-                self.cache_avatares[ruta_img] = procesar_avatar_circular(ruta_img, tamano_tabla)
-            
-            pixmap_circular = self.cache_avatares[ruta_img]
-            
-            if pixmap_circular:
-                lbl_foto.setPixmap(pixmap_circular)
-            else:
-                if ruta_img and ruta_img.lower().endswith('.heic'):
-                    lbl_foto.setText("📸 HEIC")
-                    lbl_foto.setStyleSheet("color: #0077b6; font-size: 10px; font-weight: bold;")
+                # CACHÉ DE IMÁGENES (Memoria + Disco)
+                if ruta_img and ruta_img not in self.cache_avatares:
+                    self.cache_avatares[ruta_img] = procesar_avatar_circular(ruta_img, tamano_tabla)
+                
+                pixmap_circular = self.cache_avatares.get(ruta_img) if ruta_img else None
+                
+                if pixmap_circular:
+                    lbl_foto.setPixmap(pixmap_circular)
                 else:
-                    lbl_foto.setText("👤")
-                    lbl_foto.setStyleSheet("color: #ddd; font-size: 24px; background-color: #f8fdff; border-radius: 25px;")
-            
-            self.tabla.setCellWidget(fila_idx, 6, lbl_foto)
+                    if ruta_img and ruta_img.lower().endswith('.heic'):
+                        lbl_foto.setText("📸 HEIC")
+                        lbl_foto.setStyleSheet("color: #0077b6; font-size: 10px; font-weight: bold;")
+                    else:
+                        lbl_foto.setText("👤")
+                        lbl_foto.setStyleSheet("color: #ddd; font-size: 24px; background-color: #f8fdff; border-radius: 25px;")
+                
+                self.tabla.setCellWidget(fila_idx, 6, lbl_foto)
 
-            self.tabla.setItem(fila_idx, 7, QTableWidgetItem(str(b['correo'])))
-            self.tabla.setItem(fila_idx, 8, QTableWidgetItem(str(b['pan'])))
-            self.tabla.setItem(fila_idx, 9, QTableWidgetItem(str(b['faltas'])))
-            
-            estado_penalizado = "SÍ" if b['penalizado'] else "NO"
-            item_penalizado = QTableWidgetItem(estado_penalizado)
-            if b['penalizado']:
-                item_penalizado.setForeground(QColor("#f44336"))
-            self.tabla.setItem(fila_idx, 10, item_penalizado)
-            
-            self.tabla.setItem(fila_idx, 11, QTableWidgetItem(str(b['horas_penalizacion'])))
-            self.tabla.setItem(fila_idx, 12, QTableWidgetItem(str(b['cant_penalizaciones'])))
-            self.tabla.setItem(fila_idx, 13, QTableWidgetItem(str(b['prestamos_activos'])))
+                self.tabla.setItem(fila_idx, 7, QTableWidgetItem(str(b['correo'])))
+                self.tabla.setItem(fila_idx, 8, QTableWidgetItem(str(b['pan'])))
+                self.tabla.setItem(fila_idx, 9, QTableWidgetItem(str(b['faltas'])))
+                
+                estado_penalizado = "SÍ" if b['penalizado'] else "NO"
+                item_penalizado = QTableWidgetItem(estado_penalizado)
+                if b['penalizado']:
+                    item_penalizado.setForeground(QColor("#f44336"))
+                self.tabla.setItem(fila_idx, 10, item_penalizado)
+                
+                self.tabla.setItem(fila_idx, 11, QTableWidgetItem(str(b['horas_penalizacion'])))
+                self.tabla.setItem(fila_idx, 12, QTableWidgetItem(str(b['cant_penalizaciones'])))
+                self.tabla.setItem(fila_idx, 13, QTableWidgetItem(str(b['prestamos_activos'])))
 
-            widget_botones = QWidget()
-            layout_btn_celda = QHBoxLayout(widget_botones)
-            layout_btn_celda.setContentsMargins(4, 2, 4, 2)
-            layout_btn_celda.setSpacing(6)
+                widget_botones = QWidget()
+                layout_btn_celda = QHBoxLayout(widget_botones)
+                layout_btn_celda.setContentsMargins(4, 2, 4, 2)
+                layout_btn_celda.setSpacing(6)
 
-            btn_penalizar = QPushButton("Penalizar")
-            btn_penalizar.setObjectName("btn_tabla_penalizar")
-            btn_penalizar.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn_penalizar.setProperty("lu_alumno", b['lu'])
-            btn_penalizar.clicked.connect(self.controlador_penalizar)
-            layout_btn_celda.addWidget(btn_penalizar)
+                btn_penalizar = QPushButton("Penalizar")
+                btn_penalizar.setObjectName("btn_tabla_penalizar")
+                btn_penalizar.setCursor(Qt.CursorShape.PointingHandCursor)
+                btn_penalizar.setProperty("lu_alumno", b['lu'])
+                btn_penalizar.clicked.connect(self.controlador_penalizar)
+                layout_btn_celda.addWidget(btn_penalizar)
 
-            btn_despenalizar = QPushButton("Despenalizar")
-            btn_despenalizar.setObjectName("btn_tabla_despenalizar")
-            btn_despenalizar.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn_despenalizar.setProperty("lu_alumno", b['lu'])
-            btn_despenalizar.clicked.connect(self.controlador_despenalizar)
-            layout_btn_celda.addWidget(btn_despenalizar)
+                btn_despenalizar = QPushButton("Despenalizar")
+                btn_despenalizar.setObjectName("btn_tabla_despenalizar")
+                btn_despenalizar.setCursor(Qt.CursorShape.PointingHandCursor)
+                btn_despenalizar.setProperty("lu_alumno", b['lu'])
+                btn_despenalizar.clicked.connect(self.controlador_despenalizar)
+                layout_btn_celda.addWidget(btn_despenalizar)
 
-            widget_botones.setLayout(layout_btn_celda)
-            self.tabla.setCellWidget(fila_idx, 14, widget_botones)
+                widget_botones.setLayout(layout_btn_celda)
+                self.tabla.setCellWidget(fila_idx, 14, widget_botones)
+        finally:
+            self.tabla.setUpdatesEnabled(True)
 
     def filtrar_tabla(self, texto_busqueda):
         texto_limpio = texto_busqueda.strip().lower()
@@ -210,22 +215,26 @@ class PestañaCarnets(QWidget):
         archivos = os.listdir(carpeta)
         formatos_validos = ('_foto.jpg', '_foto.jpeg', '_foto.png', '_foto.heic', '_foto.webp')
         
+        lote_fotos = []
         for archivo in archivos:
             if archivo.lower().endswith(formatos_validos):
                 dni = archivo.split('_')[0]
                 ruta_completa_foto = os.path.join(carpeta, archivo).replace("\\", "/")
-                backend.asociar_foto_beneficiario(dni, ruta_completa_foto)
+                lote_fotos.append((ruta_completa_foto, dni))
+
+        if lote_fotos:
+            backend.asociar_fotos_masivo(lote_fotos)
 
         QMessageBox.information(self, "Escaneo Completado", "Se encontraron y emparejaron fotos exitosamente.")
         self.actualizar_tabla_datos()
         self.input_busqueda.clear()
 
     def verificar_pass_rrhh(self):
-        password, ok = QInputDialog.getText(self, "Seguridad Requerida", "Ingrese la contraseña de RRHH:", QLineEdit.EchoMode.Password)
-        if ok and password == "Ingeniumcei26":
+        password, ok = QInputDialog.getText(self, "Seguridad Requerida", "Ingrese contraseña de autorización:", QLineEdit.EchoMode.Password)
+        if ok and (validar_contrasena(password, rol="rrhh") or validar_contrasena(password, rol="informatica")):
             return True
         elif ok:
-            QMessageBox.warning(self, "Acceso Denegado", "Contraseña de RRHH incorrecta.")
+            QMessageBox.warning(self, "Acceso Denegado", "Contraseña incorrecta.")
         return False
 
     def controlador_penalizar(self):
@@ -300,8 +309,7 @@ class PestañaCarnets(QWidget):
 
         dialogo = QDialog(self)
         dialogo.setWindowTitle(f"Identidad: {apellidos}, {nombres}")
-        dialogo.setFixedSize(450, 450) 
-        dialogo.setStyleSheet("background-color: white;")
+        dialogo.setFixedSize(450, 450)
         
         layout = QVBoxLayout(dialogo)
         layout.setContentsMargins(10, 10, 10, 10)

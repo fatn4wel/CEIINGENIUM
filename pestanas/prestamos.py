@@ -27,7 +27,7 @@ class PestañaPrestamos(QWidget):
 
         self.timer_sincronizacion = QTimer(self)
         self.timer_sincronizacion.timeout.connect(self.actualizar_tabla)
-        self.timer_sincronizacion.start(2000)
+        self.timer_sincronizacion.start(10000)
 
         self.inicializar_ui()
 
@@ -121,6 +121,8 @@ class PestañaPrestamos(QWidget):
         layout_obj.addWidget(QLabel("Seleccionar objeto a prestar:"))
         self.combo_objetos = QComboBox()
         self.combo_objetos.setObjectName("combo_objetos")
+        from backend.utils_vistas import estabilizar_combobox
+        estabilizar_combobox(self.combo_objetos)
         layout_obj.addWidget(self.combo_objetos)
         
         self.btn_prestar = QPushButton("✅ Asignar Préstamo")
@@ -210,10 +212,26 @@ class PestañaPrestamos(QWidget):
         self.lbl_info_bene.setText(texto_html)
 
     def cargar_combo_objetos(self):
+        # Si el usuario tiene el menú desplegable abierto, no interrumpir la interacción
+        if self.combo_objetos.view() and self.combo_objetos.view().isVisible():
+            return
+
         objetos = backend.obtener_objetos_populares()
+        # Orden alfabético estricto e insensible a mayúsculas
+        objetos = sorted(objetos, key=lambda x: str(x['nombre_objeto']).strip().lower())
+
+        id_actual = self.combo_objetos.currentData()
+        self.combo_objetos.blockSignals(True)
         self.combo_objetos.clear()
-        for o in objetos:
+        indice_a_seleccionar = -1
+        for idx, o in enumerate(objetos):
             self.combo_objetos.addItem(f"{o['nombre_objeto']} (Disponibles: {o['cantidad_disponibles']})", o['id'])
+            if id_actual is not None and o['id'] == id_actual:
+                indice_a_seleccionar = idx
+
+        if indice_a_seleccionar != -1:
+            self.combo_objetos.setCurrentIndex(indice_a_seleccionar)
+        self.combo_objetos.blockSignals(False)
 
     def ejecutar_prestamo(self):
         if not self.beneficiario_actual: return
@@ -306,7 +324,7 @@ class PestañaPrestamos(QWidget):
                 item_est = QTableWidgetItem("🟢 Devuelto")
                 item_est.setForeground(QColor("#4CAF50"))
                 self.tabla.setItem(f_idx, 7, item_est)
-                self.tabla.setCellWidget(f_idx, 8, QLabel("")) 
+                self.tabla.setItem(f_idx, 8, QTableWidgetItem("")) 
             else: # devuelto IS NULL (activo) o devuelto = 2 (procesando)
                 self.tabla.setItem(f_idx, 6, QTableWidgetItem("-"))
                 
@@ -422,7 +440,7 @@ class PestañaPrestamos(QWidget):
         
         lu_traducido = None
         if t.isdigit() and len(t) >= 7:
-            b = backend.buscar_beneficiario(t)
+            b = backend.buscar_beneficiario(t, actualizar_mantenimiento=False)
             if b:
                 lu_traducido = str(b['lu']).lower()
 
@@ -451,8 +469,7 @@ class PestañaPrestamos(QWidget):
 
         dialogo = QDialog(self)
         dialogo.setWindowTitle(f"Identidad: {self.beneficiario_actual['apellidos']}, {self.beneficiario_actual['nombres']}")
-        dialogo.setFixedSize(450, 450) 
-        dialogo.setStyleSheet("background-color: white;")
+        dialogo.setFixedSize(450, 450)
         
         layout = QVBoxLayout(dialogo)
         layout.setContentsMargins(10, 10, 10, 10)
